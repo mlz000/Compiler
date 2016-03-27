@@ -393,12 +393,21 @@ struct yy_trans_info
 static yyconst flex_int16_t yy_accept[76] =
     {   0,
         0,    0,   35,   33,   32,   32,   18,   33,   20,   21,
+<<<<<<< HEAD:code/lex.yy.c
        13,   11,    8,   12,   17,   14,    5,    5,    7,   10,
         9,   10,   31,   22,   23,   31,   31,   31,   31,   31,
        31,   24,   33,   25,   10,   15,    0,    2,    1,    0,
         4,    0,    0,    5,   31,   31,   31,   28,   31,   31,
        31,   31,   16,    0,    6,    3,   31,   31,   19,   31,
        31,   31,    0,    6,   29,   31,   31,   31,   31,   31,
+=======
+       13,   11,    8,   12,   17,   14,    3,    3,    7,   10,
+        9,   10,   31,   22,   23,   31,   31,   31,   31,   31,
+       31,   24,   33,   25,   10,   15,    0,    2,    1,    0,
+        6,    0,    0,    3,   31,   31,   31,   28,   31,   31,
+       31,   31,   16,    0,    4,    5,   31,   31,   19,   31,
+       31,   31,    0,    4,   29,   31,   31,   31,   31,   31,
+>>>>>>> 803ccf1ffc72483fbdc168229932e661cb687e0a:lex.yy.c
        31,   30,   27,   26,    0
     } ;
 
@@ -548,7 +557,11 @@ char *ToArray(const char *s) {
 	return p;
 }
 
+<<<<<<< HEAD:code/lex.yy.c
 Node* AddNewNode(char *s) {
+=======
+Node* AddNewNode(char* s) {
+>>>>>>> 803ccf1ffc72483fbdc168229932e661cb687e0a:lex.yy.c
 	Node *p = NewNode();
 	p -> LineNo = yylineno;
 	p -> IsToken = true; // leaf
@@ -869,7 +882,11 @@ YY_RULE_SETUP
 #line 84 "lexical.l"
 {
 	work("INT");
+<<<<<<< HEAD:code/lex.yy.c
 	yylval -> IntVal = strtol(yytext, NULL, 16);
+=======
+	yylval -> IntVal = atoi(yytext);
+>>>>>>> 803ccf1ffc72483fbdc168229932e661cb687e0a:lex.yy.c
 	return INT;
 }
 	YY_BREAK
@@ -877,17 +894,28 @@ case 4:
 YY_RULE_SETUP
 #line 90 "lexical.l"
 {
+<<<<<<< HEAD:code/lex.yy.c
 	work("INT");
 	yylval -> IntVal = strtol(yytext, NULL, 8);
 	return INT;
+=======
+	work("FLOAT");
+	yylval -> FloatVal = atof(yytext);
+	return FLOAT;
+>>>>>>> 803ccf1ffc72483fbdc168229932e661cb687e0a:lex.yy.c
 }
 	YY_BREAK
 case 5:
 YY_RULE_SETUP
 #line 96 "lexical.l"
 {
+<<<<<<< HEAD:code/lex.yy.c
 	work("INT");
 	yylval -> IntVal = atoi(yytext);
+=======
+	work("HEX");
+	yylval -> IntVal = strtol(yytext, NULL, 16);
+>>>>>>> 803ccf1ffc72483fbdc168229932e661cb687e0a:lex.yy.c
 	return INT;
 }
 	YY_BREAK
@@ -895,9 +923,15 @@ case 6:
 YY_RULE_SETUP
 #line 102 "lexical.l"
 {
+<<<<<<< HEAD:code/lex.yy.c
 	work("FLOAT");
 	yylval -> FloatVal = atof(yytext);
 	return FLOAT;
+=======
+	work("OCT");
+	yylval -> IntVal = strtol(yytext, NULL, 8);
+	return INT;
+>>>>>>> 803ccf1ffc72483fbdc168229932e661cb687e0a:lex.yy.c
 }
 	YY_BREAK
 case 7:
