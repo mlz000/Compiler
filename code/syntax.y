@@ -111,6 +111,7 @@ DefList: { $$ = NULL; }
 	| Def DefList { $$ = gao(ToStr(DecList), 2, $1, $2); }
 	;
 Def: Specifier DecList SEMI { $$ = gao(ToStr(Def), 3, $1, $2, $3); }
+	| Specifier error SEMI { $$ = gao(ToStr(Dec), 3, $1, $2, $3);}
     ;
 DecList: Dec { $$ = gao(ToStr(DecList), 1, $1); }
 	| Dec COMMA DecList { $$ = gao(ToStr(DecList), 3, $1, $2, $3); }
