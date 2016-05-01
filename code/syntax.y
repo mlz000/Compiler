@@ -7,6 +7,7 @@
 #define YYSTYPE Node*
 #define ToStr(x) #x
 int Error;
+Node *Root;
 int yylex();
 void yyerror(char *msg);
 Node *gao(char *s, int num, ...) { //varible
@@ -45,6 +46,7 @@ Node *gao(char *s, int num, ...) { //varible
 /* High-level Definitions */
 Program : ExtDefList {
 	$$ = gao(ToStr(Program), 1, $1);
+	Root = $$;
 	if (Error == 0)	PrintTree($$, 0);
 } 
 	;
@@ -56,6 +58,7 @@ ExtDefList : {$$ = NULL;}
 ExtDef : Specifier ExtDecList SEMI {$$ = gao(ToStr(ExtDef), 3, $1, $2, $3);}
 	| Specifier SEMI{$$ = gao(ToStr(ExtDef), 2, $1, $2);}
 	| Specifier FunDec CompSt {$$ = gao(ToStr(ExtDef), 3, $1, $2, $3);}
+	| Specifier FunDec SEMI {$$ = gao(ToStr(ExtDef), 3, $1, $2, $3);}
 	| error SEMI {$$ = gao(ToStr(ExtDef), 2, $1, $2);}
 	;
 ExtDecList : VarDec {$$ = gao(ToStr(ExtDecList), 1, $1);}
@@ -76,7 +79,7 @@ Tag: ID { $$ = gao(ToStr(Tag), 1, $1); }
    ;
 
 /*Declarators*/
-VarDec: ID { $$ = gao(ToStr(arDec), 1, $1); }
+VarDec: ID { $$ = gao(ToStr(VarDec), 1, $1); }
 	| VarDec LB INT RB { $$ = gao(ToStr(VarDec), 4, $1, $2, $3, $4); }
 	;
 FunDec: ID LP VarList RP { $$ = gao(ToStr(FunDec), 4, $1, $2, $3, $4); }
@@ -108,9 +111,10 @@ Stmt: Exp SEMI { $$ = gao(ToStr(Stmt), 2, $1, $2); }
 
 /* Local Definitions */
 DefList: { $$ = NULL; }
-	| Def DefList { $$ = gao(ToStr(DecList), 2, $1, $2); }
+	| Def DefList { $$ = gao(ToStr(DefList), 2, $1, $2); }
 	;
 Def: Specifier DecList SEMI { $$ = gao(ToStr(Def), 3, $1, $2, $3); }
+	| Specifier FunDec SEMI { $$ = gao(ToStr(Def), 3, $1, $2, $3); }
 	| Specifier error SEMI { $$ = gao(ToStr(Dec), 3, $1, $2, $3);}
     ;
 DecList: Dec { $$ = gao(ToStr(DecList), 1, $1); }
@@ -143,8 +147,8 @@ Args: Exp COMMA Args { $$ = gao(ToStr(Args), 3, $1, $2, $3); }
 	| Exp { $$ = gao(ToStr(Args), 1, $1); }
 	;
 %%
-
 #include "lex.yy.c"
+#include "semantic.c"
 void yyerror(char *msg) {
 	Error = 1;
 	printf("Error type B at line %d : %s\n", yylineno, msg);
@@ -152,6 +156,8 @@ void yyerror(char *msg) {
 int main(int argc, char **argv) {
 	if (argc <= 1)	return 1;
 	Error = 0;
+	Root = NewNode();
+	Initall();
 	FILE *f = fopen(argv[1], "r");
 	if (!f) {
 		perror(argv[1]);
@@ -159,5 +165,7 @@ int main(int argc, char **argv) {
 	}
 	yyrestart(f);
 	yyparse();
+	WorkTree(Root);
+	CheckFunction();
 	return 0;
 }

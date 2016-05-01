@@ -1,0 +1,13 @@
+struct A {
+	int a[10][10];
+};
+
+struct B {
+	int b[10];
+};
+
+int main() {
+	struct A t1;
+	struct B t2;
+	t1 =t2;
+}
