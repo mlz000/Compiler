@@ -6,7 +6,6 @@
 #include "string.h"
 #include "assert.h"
 #include "tree.c"
-#include "semantic.c"
 
 char *WorkType(Node *node);
 //struct
@@ -22,7 +21,8 @@ struct VariableInfo *NewVariable();
 struct VariableList *NewVariableList();
 void ModifyVariable(struct VariableInfo *Var, Node *node, char *Type);
 //array
-struct ArrayField *NewArrayField(Node *node, char *Type);
+struct ArrayField *CreateArrayField(Node *node, char *Type);
+struct ArrayField *NewArrayField();
 void ModifyArraySize(Node *node, struct VariableInfo *Var);
 //function
 struct FunctionInfo *NewFunction(); 
@@ -88,7 +88,8 @@ typedef struct FunctionInfo {
 typedef struct Symbol {
 	char *SymbolName;
 	bool FunctionOrVariable, DefOrExt, IsArray;
-	int LineNo;
+	int LineNo, IdNo;
+	bool HaveAddr;
 	union {
 		struct FunctionInfo *Function;
 		struct VariableInfo *Variable;
@@ -223,7 +224,7 @@ void ModifyVariable(VariableInfo *Var, Node *node, char *Type) {
 	bool Int = (strcmp(Type, "int") == 0), Float = (strcmp(Type, "float") == 0);
 	if (s == "VarDec")	{
 		Var -> Type = 3;	//array
-		Var -> SonArray = NewArrayField(node, Type);
+		Var -> SonArray = CreateArrayField(node, Type);
 		ModifyArraySize(node, Var);
 	}
 	else if (Type == NULL || (Int + Float == 0)) Var -> Type = 2, Var -> SonStruct = FindStruct(Type);	//OptTag
@@ -235,7 +236,15 @@ void ModifyVariable(VariableInfo *Var, Node *node, char *Type) {
 	else Var -> VariableName = Type;
 }
 //Array
-ArrayField *NewArrayField(Node *node, char *Type) {
+ArrayField *NewArrayField() {
+	ArrayField *p = (ArrayField *)malloc(sizeof(ArrayField));
+	p -> ArrayFieldName = NULL;
+	p -> SonArray = NULL;
+	p -> Type = p -> Size = -1;
+	return p;
+}
+
+ArrayField *CreateArrayField(Node *node, char *Type) {
 	assert(node != NULL);
 	ArrayField *t = (ArrayField *)malloc(sizeof(ArrayField));
 	Node *Son = node -> son;
@@ -252,7 +261,7 @@ ArrayField *NewArrayField(Node *node, char *Type) {
 	else if (Son -> son -> TokenName == "VarDec") {
 		t -> Type = 3;	//array
 		t -> ArrayFieldName = "array";
-		t -> SonArray = NewArrayField(Son, Type);
+		t -> SonArray = CreateArrayField(Son, Type);
 	}
 	return t;
 }
@@ -338,8 +347,9 @@ void AddToSymbolList(struct Symbol *sym) {
 
 Symbol *NewSymbol() {
 	Symbol *t = (Symbol *)malloc(sizeof(Symbol));
-	t -> IsArray = false;
+	t -> IsArray = t -> HaveAddr = false;
 	t -> Prev = t -> Next = t;
+	t -> IdNo = -1;
 	return t;
 }
 

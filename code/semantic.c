@@ -6,16 +6,18 @@
 #include "symbol.h"
 #include "tree.c"
 #include "assert.h"
+#include "translate.c"
 
 #define first (t -> son)
 #define second (t -> son -> son)
 #define third (t -> son -> son -> son)
 
-void WorkTree(Node *node);
+InterCode *WorkTree(Node *node);
 void WorkSymbol(Node *node);
 void WorkStruct(Node *node);
 void WorkExp(Node *node);
 void WorkCompSt(Node *node);
+int WorkSize(int type, ArrayField *arr, Struct *str);
 char *WorkType(Node *node);
 void AddGlobalFuntionSymbol(Node *node, char *type);
 void AddGlobalVariableSymbol(Node *node, char *type);
@@ -24,6 +26,8 @@ void PopStack();
 void CheckSymbol();
 bool CheckStructSame(Struct *str1, Struct *str2);
 bool CheckArraySame(ArrayField *arr1, ArrayField *arr2);
+Struct *ReStruct(Node *node);
+ArrayField *ReArray(Node *node);
 char *ErrorInfo[] = {
 	"Undefined variable \"%s\"",
 	"Undefined function \"%s\"",
@@ -67,9 +71,39 @@ bool Check(char *s1, char *s2) {
 	return (strcmp(s1, s2) == 0);
 }
 
-void Initall() {
+void InitSym() {
+	//insert read and write
 	SymbolHead = NULL;
 	StructHead = NULL;
+	Symbol *tread = NewSymbol(), *twrite = NewSymbol();
+	FunctionInfo *f1 = NewFunction(), *f2 = NewFunction();
+	VariableInfo *v1 = NewVariable();
+	VariableList *vlist = NewVariableList();
+	ModifySymbol(tread, "read", 0, 0, -1);
+	f1 -> FunctionType = "int", f1 -> Type = 0, f1 -> NumOfParameter = 0;
+	tread -> Function = f1;
+	AddToSymbolList(tread);
+	ModifySymbol(twrite, "write", 0, 0, -1);
+	f2 -> FunctionType = "int", f2 -> Type = 0, f2 -> NumOfParameter = 1;
+	v1 -> VariableName = "int", v1 -> Type = 0;
+	vlist -> Head = v1;
+	f2 -> Head = vlist;
+	twrite -> Function = f2;
+	AddToSymbolList(twrite);
+}
+
+Struct *ReStruct(Node *node) {
+	Struct *str = NewStruct();
+	WorkExpType(node);
+	str = NeedStruct;
+	return str;
+}
+
+ArrayField *ReArray(Node *node) {
+	ArrayField *arr = NewArrayField();
+	WorkExpType(node);
+	arr = NeedArray;
+	return arr;
 }
 
 void PrintError(int num, int LineNo, char *s) {
@@ -82,7 +116,7 @@ void PrintError(int num, int LineNo, char *s) {
 void AddGlobalVariableSymbol(Node *node, char *Type) {
 	assert(node != NULL);
 	Node *t = node, *Son = node -> son;
-	Symbol *Sym1 = NewSymbol(), *Sym2 = NULL;
+	Symbol *Sym1 = NewSymbol(), *Sym2 = NULL, *Sym3 = NULL;
 	Struct *St = NULL;
 	VariableInfo *Var = NewVariable();
 	//ExtDecList -> VarDec COMMA ExtDecList
@@ -92,30 +126,38 @@ void AddGlobalVariableSymbol(Node *node, char *Type) {
 	}while (Son != t -> son);
 	//VarDec
 	ModifyVariable(Var, Son, Type);
-	if (!Check(Son -> son -> TokenName, "ID"))	Sym1 -> IsArray = true;
-	while (!Check(Son -> TokenName, "ID"))	Son = Son -> son;
+	while (!Check(Son -> son -> TokenName, "ID")) {
+		Sym1 -> IsArray = true;
+		Son = Son -> son;
+	}
+	Son = Son -> son;
 	ModifySymbol(Sym1, Son -> Text, 1, 0, Son -> LineNo);
 	Sym1 -> Variable = Var;
 	Sym2 = FindSymbol(Sym1 -> SymbolName, 1);
+	Sym3 = FindSymbol(Sym1 -> SymbolName, 0);
 	St = FindStruct(Sym1 -> SymbolName);
-	if (Sym2 != NULL || St != NULL)	PrintError(3, Sym1 -> LineNo, Sym1 -> SymbolName);
+	if (Sym2 != NULL || Sym3 != NULL || St != NULL)	PrintError(3, Sym1 -> LineNo, Sym1 -> SymbolName);
 	else AddToSymbolList(Sym1);
 }
 
 void AddLocalVariableSymbol(Node *node, char *Type) {
 	//VarDec
 	Node *t = node;
-	Symbol *Sym1 = NewSymbol(), *Sym2 = NULL;
+	Symbol *Sym1 = NewSymbol(), *Sym2 = NULL, *Sym3 = NULL;
 	Struct *Str = NULL;
 	VariableInfo *Var = NewVariable();
 	ModifyVariable(Var, t, Type);
-	if (!Check(t -> son -> TokenName, "ID"))	Sym1 -> IsArray = true;
-	while (!Check(t -> TokenName, "ID"))	t = t -> son;
+	while (!Check(t -> son -> TokenName, "ID")) {
+		Sym1 -> IsArray = true;
+		t = t -> son;
+	}
+	t = t -> son;
 	ModifySymbol(Sym1, t -> Text, 1, 0, t -> LineNo);
 	Sym1 -> Variable = Var;
 	Sym2 = FindSymbol(Sym1 -> SymbolName, 1);
+	Sym3 = FindSymbol(Sym1 -> SymbolName, 0);
 	Str = FindStruct(Sym1 -> SymbolName);
-	if (Sym2 != NULL || Str != NULL)	PrintError(3, Sym1 -> LineNo, Sym1 -> SymbolName);
+	if (Sym2 != NULL || Sym3 != NULL || Str != NULL)	PrintError(3, Sym1 -> LineNo, Sym1 -> SymbolName);
 	else AddToSymbolList(Sym1);
 }
 
@@ -157,7 +199,7 @@ void AddGlobalFuntionSymbol(Node *node, char *Type) {
 	assert(node != NULL);
 	Node *t = node;
 	FunctionInfo *tfunc = NewFunction();
-	Symbol *Sym1 = NewSymbol(), *Sym2 = NewSymbol();
+	Symbol *Sym1 = NewSymbol(), *Sym2 = NewSymbol(), *Sym3 = NewSymbol();
 	VariableList *List1, *List2;
 	bool DefOrExt = 0;
 	if (Check(t -> Next -> TokenName, "CompSt"))	DefOrExt = 0;
@@ -168,7 +210,8 @@ void AddGlobalFuntionSymbol(Node *node, char *Type) {
 	ModifySymbol(Sym1, t -> Text, 0, DefOrExt, t -> LineNo);
 	Sym1 -> Function = tfunc;
 	Sym2 = FindSymbol(Sym1 -> SymbolName, 0);
-	if (Sym2 != NULL && Sym2 -> DefOrExt == 0 && DefOrExt == 0) {
+	Sym3 = FindSymbol(Sym1 -> SymbolName, 1);
+	if (Sym3 != NULL || (Sym2 != NULL && Sym2 -> DefOrExt == 0 && DefOrExt == 0)) {
 		PrintError(4, Sym1 -> LineNo, Sym1 -> SymbolName);
 		return ;
 	}
@@ -257,7 +300,7 @@ void WorkStruct(Node *node) {
 	if (Check(t -> TokenName, "StructSpecifier") && !Check(Son -> Next -> TokenName, "Tag")) {
 		if (Check(Son -> Next -> TokenName, "OptTag")) {
 			s = Son -> Next -> son -> Text;
-			if (FindSymbol(s, 1) != NULL || FindStruct(s) != NULL) {
+			if (FindSymbol(s, 1) != NULL || FindSymbol(s, 0) != NULL || FindStruct(s) != NULL) {
 				PrintError(16, Son -> Next -> son -> LineNo, s);
 				return ;
 			}
@@ -295,6 +338,7 @@ int WorkExpType(Node *node) {
 	Symbol *Sym1 = NULL;
 	ArrayField *Arr = NULL;
 	Node *t = node -> son;
+	//printf("!!!%s\n", t -> TokenName);//debug
 	int t1, t2, t3;
 	if (Check(t -> TokenName, "INT"))	return 0;
 	else if (Check(t -> TokenName, "FLOAT"))	return 1;
@@ -311,6 +355,7 @@ int WorkExpType(Node *node) {
 		else {	//variable
 			Sym1 = FindSymbol(t -> Text, 1);
 			if (Sym1 != NULL) {
+				int num = Sym1 -> Variable -> Type;
 				if (Sym1 -> Variable -> Type == 2) {
 					if (Sym1 -> Variable -> SonStruct == NULL)	NeedStruct = NULL;
 					else NeedStruct = Sym1 -> Variable -> SonStruct;
@@ -319,7 +364,7 @@ int WorkExpType(Node *node) {
 					if (Sym1 -> Variable -> SonArray == NULL)	NeedArray = NULL;
 					else NeedArray = Sym1 -> Variable -> SonArray;
 				}
-				return Sym1 -> Variable -> Type;
+				return num;
 			}
 		}
 	}
@@ -337,26 +382,20 @@ int WorkExpType(Node *node) {
 				break;
 			}
 		if (two) {
-			t1 = WorkExpType(t), t2 = WorkExpType(t -> Next -> Next);
+			t1 = WorkExpType(t); 
+			t2 = WorkExpType(t -> Next -> Next);
 			if (t1 == 0 && t2 == 0)	return 0;
 			else if (t1 == 1 && t2 == 1)	return 1;
 			else return -1;
 		}
 		else if (one)	return WorkExpType(t -> Next);
 		else if (Check(t -> Next -> TokenName, "LB")) {	//array
-			t3 = 0;
-			Node *tmpnode = t;
-			while (!Check(tmpnode -> son -> TokenName, "ID")) {
-				++t3;
-				tmpnode = tmpnode -> son;
-			}
-			Sym1 = FindSymbol(tmpnode -> son -> Text, 1);
-			Arr = Sym1 -> Variable -> SonArray;
-			for(i = 0; i < t3; ++i)	Arr = Arr -> SonArray;
+			ArrayField *tarrfield = NewArrayField();
+			tarrfield = ReArray(t);
 			//struct
-			if (Arr -> Type == 2)	NeedStruct = Arr -> SonStruct;
-			else if (Arr -> Type == 3)	NeedArray = Arr -> SonArray;
-			return Arr -> Type;
+			if (tarrfield -> Type == 2)	NeedStruct = tarrfield -> SonStruct;
+			else if (tarrfield -> Type == 3)	NeedArray = tarrfield -> SonArray;
+			return tarrfield -> Type;
 		}
 		else if (Check(t -> Next -> TokenName, "DOT")) {
 			StructField *tfield = NewStructField();
@@ -509,7 +548,8 @@ void WorkExp(Node *node) {
 		bool id = Check(t -> son -> TokenName, "ID"), exp = Check(t -> son -> TokenName, "Exp");
 		bool nid = Check(t -> son -> Next -> TokenName, "ID"), nlb = Check(t -> son -> Next -> TokenName, "LB"), ndot = Check(t -> son -> Next -> TokenName, "DOT");
 		if (!((id && nid) || (exp && nlb) || (exp && ndot)))	PrintError(6, node -> LineNo, "QvQ");
-		int t1 = WorkExpType(t), t2 = WorkExpType(t -> Next -> Next);
+		int t1 = WorkExpType(t);
+		int t2 = WorkExpType(t -> Next -> Next);//bug!
 		if (~t1 && ~t2 && t1 != t2)	PrintError(5, node -> LineNo, "QvQ");
 		if (t1 == 2 && t2 == 2) {
 			WorkExpType(t);
@@ -624,26 +664,47 @@ void WorkCompSt(Node *node) {
 		}
 	}
 }
+int WorkSize(int type, ArrayField *arr, Struct *str) {
+	int t = 0;
+	if (type == 0 || type == 1)	return 4;
+	else if (type == 2) {	//struct
+		StructField *tfield = NewStructField();
+		tfield = str -> Head;
+		do {
+			t += WorkSize(tfield -> Type, tfield -> SonArray, tfield -> SonStruct);
+			tfield = tfield -> Next;
+		}while (tfield != str -> Head);
+	}
+	else if (type == 3)	return arr -> Size * WorkSize(arr -> Type, arr -> SonArray, arr -> SonStruct);
+	return t;
+}
 
-void WorkTree(Node *node) {
-	assert(node != NULL);
+InterCode *WorkTree(Node *node) {
+	InterCode *p = NULL;
 	Node *t = node, *Son = node -> son;
-	if (Check(t -> TokenName, "ExtDef"))	WorkSymbol(t);
+	if (Check(t -> TokenName, "ExtDef")) {
+		WorkSymbol(t);
+		AddInterCode(TransExtDef(t), &p);//func
+	}
 	if (Check(t -> TokenName, "StructSpecifier") && !Check(Son -> Next -> TokenName, "Tag"))	WorkStruct(t);
 	if (Check(t -> TokenName, "CompSt")) {		//{
 		PushStack();
 		WorkCompSt(t);
 		CheckLocalVariable();
+		if (Check(t -> Prev -> TokenName, "FunDec"))	AddInterCode(TransCompSt(t), &p);
 	}
 	if (Check(t -> TokenName, "Exp")) {
 		WorkExp(t);
+		//puts("XX");//debug
 	}
 	if (Son != NULL) {
 		do {
-			WorkTree(Son);
+			AddInterCode(WorkTree(Son), &p);
 			Son = Son -> Next;
 		}while (Son != t -> son);	//double linked list
 	}
-	if (Check(t -> TokenName, "CompSt"))	PopStack();	//}
+	if (Check(t -> TokenName, "CompSt"))	PopStack();	//
+	//puts("WorkTree!");
+	return p;
 }
 #endif

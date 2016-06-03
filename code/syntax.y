@@ -157,7 +157,9 @@ int main(int argc, char **argv) {
 	if (argc <= 1)	return 1;
 	Error = 0;
 	Root = NewNode();
-	Initall();
+	InitSym();
+	InitInterCode();
+	InterCode *Head = NewInterCode();
 	FILE *f = fopen(argv[1], "r");
 	if (!f) {
 		perror(argv[1]);
@@ -165,7 +167,8 @@ int main(int argc, char **argv) {
 	}
 	yyrestart(f);
 	yyparse();
-	WorkTree(Root);
+	Head = WorkTree(Root);
 	CheckFunction();
+	PrintInterCodeTable(Head);
 	return 0;
 }

@@ -1,5 +1,3 @@
-TESTFILE = $(shell find -name "*.cmm")
-
 all:
 	bison -d syntax.y
 	flex lexical.l
