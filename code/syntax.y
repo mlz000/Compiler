@@ -161,6 +161,7 @@ int main(int argc, char **argv) {
 	InitInterCode();
 	InterCode *Head = NewInterCode();
 	FILE *f = fopen(argv[1], "r");
+	FILE *f2 = fopen(argv[2], "w");
 	if (!f) {
 		perror(argv[1]);
 		return 1;
@@ -169,6 +170,6 @@ int main(int argc, char **argv) {
 	yyparse();
 	Head = WorkTree(Root);
 	CheckFunction();
-	PrintInterCodeTable(Head);
+	PrintInterCodeTable(Head, f2);
 	return 0;
 }

@@ -148,12 +148,10 @@ void PrintInterCode(InterCode *t, FILE *file){
     printf("%s\n", buf);
 }
 
-void PrintInterCodeTable(InterCode *ICHead){
+void PrintInterCodeTable(InterCode *ICHead, FILE *file){
     if(ICHead == NULL) return;    
     InterCode *t = ICHead;
-    FILE *file = fopen("out.ir", "w");
-    if(!file) return;
-    do{        
+	do{        
         PrintInterCode(t, file);
         t = t -> Next;
     }while(t != ICHead);
